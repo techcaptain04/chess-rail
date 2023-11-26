@@ -22,10 +22,7 @@ export default class extends Controller {
 
   onDragStart(source, piece, position, orientation) {
     // Do not pick up pieces if the game is over
-    if (this.game.isGameOver()) {
-      console.log("Game over!");
-      return false;
-    }
+    this.checkIfGameOver();
 
     // If not the player's turn
     if ((this.game.turn() === 'w' && piece.search(/^b/) !== -1) ||
@@ -94,6 +91,7 @@ export default class extends Controller {
       this.board.position(this.game.fen());
       this.updatePgnView();
       console.log("pgn: ", this.game.pgn());
+      this.checkIfGameOver();
       if (this.usingOpeningBook) {
         this.fetchNextOpeningMoves(this.game.pgn()).then(data => console.log("Next moves: ", data));
       }
@@ -132,6 +130,18 @@ export default class extends Controller {
     } catch (error) {
       console.error('Error fetching moves:', error);
       return null;
+    }
+  }
+
+  checkIfGameOver() {
+    if (this.game.isGameOver()) {
+      console.log("Game over!");
+      if (this.game.isCheckmate()) {
+        alert("Checkmate!");
+      } else if (this.game.isDraw()) {
+        alert("Draw!");
+      }
+      return false;
     }
   }
 }
