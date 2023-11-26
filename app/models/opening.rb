@@ -1,4 +1,9 @@
 class Opening < ApplicationRecord
+  # Make all instances of Opening read-only
+  def readonly?
+    true
+  end
+
   def self.search(search)
     if search
       where("name LIKE ?", "%#{search}%")
