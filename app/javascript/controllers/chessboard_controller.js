@@ -5,6 +5,8 @@ import { Chess } from "chess.js";
 // Connects to data-controller="chessboard"
 export default class extends Controller {
   connect() {
+    this.usingOpeningBook = true;
+
     this.game = new Chess();
     let config = {
       draggable: true,
@@ -67,33 +69,52 @@ export default class extends Controller {
   makeComputerMove() {
     let currentPgn = this.game.pgn();
 
-    this.fetchNextMoves(currentPgn).then(possibleMoves => {
-      // Choose a random move from the array of possible moves
-      let randomIndex = Math.floor(Math.random() * possibleMoves.length);
-      let computerMove = possibleMoves[randomIndex];
+    if(this.usingOpeningBook) {
+      this.fetchNextOpeningMoves(currentPgn).then(possibleMoves => {
+        if (possibleMoves.length > 0) {
+          // If there are opening moves available, use one of them
+          let randomIndex = Math.floor(Math.random() * possibleMoves.length);
+          let computerMove = possibleMoves[randomIndex];
+          this.makeMoveOnBoard(computerMove);
+        } else {
+          // No more opening moves available, switch to Stockfish
+          console.log("End of opening book. Using Stockfish to make next move...");
+          this.usingOpeningBook = false;
+          this.useStockfishMove();
+        }
+      });
+    } else {
+      this.useStockfishMove();
+    }
+  }
 
-      // If there are no known next moves, alert the user
-      if (!computerMove) {
-        alert("Our opening book doesn't know what to do next!");
-        return;
+  makeMoveOnBoard(move) {
+    try {
+      this.game.move(move);
+      this.board.position(this.game.fen());
+      this.updatePgnView();
+      console.log("pgn: ", this.game.pgn());
+      if (this.usingOpeningBook) {
+        this.fetchNextOpeningMoves(this.game.pgn()).then(data => console.log("Next moves: ", data));
       }
+    } catch (error) {
+      console.log("Error in computer move: ", error);
+    }
+  }
 
-      // Make the move on the board
-      try {
-        this.game.move(computerMove);
-        this.board.position(this.game.fen());
-        this.updatePgnView();
-
-        // Console log the current pgn and the next moves
-        console.log("pgn: ", this.game.pgn());
-        this.fetchNextMoves(this.game.pgn()).then(data => console.log("Next moves: ", data));
-      } catch (error) {
-        console.log("Error in computer move: ", error);
+  useStockfishMove() {
+    let currentFen = this.game.fen();
+    this.fetchNextStockfishMove(currentFen).then(stockfishMove => {
+      if (stockfishMove) {
+        console.log("Stockfish move: ", stockfishMove);
+        this.makeMoveOnBoard(stockfishMove);
+      } else {
+        console.log("Couldn't get a move from Stockfish, something must be fishy...");
       }
     });
   }
 
-  fetchNextMoves(pgn) {
+  fetchNextOpeningMoves(pgn) {
     return fetch(`/api/openings/next_moves?pgn=${encodeURIComponent(pgn)}`)
       .then(response => response.json())
       .then(data => data.moves)
@@ -101,5 +122,16 @@ export default class extends Controller {
         console.error('Error fetching moves:', error);
         return [];
       });
+  }
+
+  async fetchNextStockfishMove(fen) {
+    try {
+      const response = await fetch(`/api/stockfish/next_move?fen=${encodeURIComponent(fen)}`);
+      const data = await response.json();
+      return data.move;
+    } catch (error) {
+      console.error('Error fetching moves:', error);
+      return null;
+    }
   }
 }

@@ -13,5 +13,6 @@ Rails.application.routes.draw do
 
   namespace :api do
     get 'openings/next_moves', to: 'openings#next_moves'
+    get 'stockfish/next_move', to: 'stockfish#next_move'
   end
 end
