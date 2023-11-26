@@ -15,7 +15,7 @@ export default class extends Controller {
       onSnapEnd: this.onSnapEnd.bind(this)
     };
 
-    this.board = Chessboard('board1', config); // Initialize chessboard
+    this.board = Chessboard('board', config); // Initialize chessboard
   }
 
   onDragStart(source, piece, position, orientation) {
@@ -48,11 +48,19 @@ export default class extends Controller {
 
     console.log("pgn: ", this.game.pgn());
     console.log("fen: ", this.game.fen());
+
+    this.updatePgnView();
   }
 
   // update the board position after the piece snap
   // for castling, en passant, pawn promotion
   onSnapEnd() {
     this.board.position(this.game.fen());
+  }
+
+  updatePgnView() {
+    // Add newlines before each move number
+    let pgn = this.game.pgn().replace(/\d+\./g, "\n$&");
+    document.getElementById("pgn").innerHTML = pgn;
   }
 }
