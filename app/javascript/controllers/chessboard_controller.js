@@ -47,9 +47,9 @@ export default class extends Controller {
     }
 
     console.log("pgn: ", this.game.pgn());
-    console.log("fen: ", this.game.fen());
 
     this.updatePgnView();
+    this.makeComputerMove();
   }
 
   // update the board position after the piece snap
@@ -62,5 +62,44 @@ export default class extends Controller {
     // Add newlines before each move number
     let pgn = this.game.pgn().replace(/\d+\./g, "\n$&");
     document.getElementById("pgn").innerHTML = pgn;
+  }
+
+  makeComputerMove() {
+    let currentPgn = this.game.pgn();
+
+    this.fetchNextMoves(currentPgn).then(possibleMoves => {
+      // Choose a random move from the array of possible moves
+      let randomIndex = Math.floor(Math.random() * possibleMoves.length);
+      let computerMove = possibleMoves[randomIndex];
+
+      // If there are no known next moves, alert the user
+      if (!computerMove) {
+        alert("Our opening book doesn't know what to do next!");
+        return;
+      }
+
+      // Make the move on the board
+      try {
+        this.game.move(computerMove);
+        this.board.position(this.game.fen());
+        this.updatePgnView();
+
+        // Console log the current pgn and the next moves
+        console.log("pgn: ", this.game.pgn());
+        this.fetchNextMoves(this.game.pgn()).then(data => console.log("Next moves: ", data));
+      } catch (error) {
+        console.log("Error in computer move: ", error);
+      }
+    });
+  }
+
+  fetchNextMoves(pgn) {
+    return fetch(`/api/openings/next_moves?pgn=${encodeURIComponent(pgn)}`)
+      .then(response => response.json())
+      .then(data => data.moves)
+      .catch(error => {
+        console.error('Error fetching moves:', error);
+        return [];
+      });
   }
 }
